@@ -15,6 +15,7 @@
 #include "matrixio-core.h"
 #include "matrixio-pcm.h"
 
+//#include <kernel/ratelimit.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -69,6 +70,11 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	ms = container_of(wk, struct matrixio_substream, work);
 
 	mutex_lock(&ms->lock);
+
+	if (ms->position + (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1) > 8192) {
+	    printk_ratelimited("%s: dropping microphone sample(s)\n", __FUNCTION__);
+            ms->position = 8192 - (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1);
+        }
 
 	for (c = 0; c < ms->channels; c++)
 		ret = matrixio_read(
